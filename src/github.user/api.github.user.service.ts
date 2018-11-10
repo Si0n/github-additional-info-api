@@ -3,16 +3,24 @@ import {ConfigService} from "./config.service";
 import {GithubService} from "./github.service";
 import {GithubUserService} from "./github.user.service";
 import {GithubUserInterface} from "./interface/github.user.interface";
+import {AuthGuard} from './auth.guard';
 
 @Injectable()
 export class ApiGithubUserService {
-    constructor(private readonly ConfigService: ConfigService, private readonly GithubService: GithubService, private readonly GithubUserService: GithubUserService) {
+    constructor(
+        private readonly ConfigService: ConfigService,
+        private readonly GithubService: GithubService,
+        private readonly GithubUserService: GithubUserService,
+        private readonly authGuard: AuthGuard
+    ) {
         this.GithubService.setEndpoint(this.ConfigService.get("GITHUB_API_ENDPOINT"));
+        this.authGuard.setApikey(this.ConfigService);
     }
 
-    async createUser(githubUserId: string, description: string) {
+    async createUser(githubUserId: string, description: string, apikey: string) {
         let newUser: GithubUserInterface = {githubId: githubUserId, description: description};
-        return this.GithubUserService.findOne(githubUserId)
+        return this.authGuard.checkApikey(apikey)
+            .then(() => this.GithubUserService.findOne(githubUserId))
             .then(exist => {
                 if (exist) throw new Error("User already created!");
             })
@@ -25,6 +33,11 @@ export class ApiGithubUserService {
                 }
             })
             .catch(e => {
+                if (e.message === this.authGuard.getErrorCode()) {
+                    return {
+                        success: true
+                    }
+                }
                 return {
                     success: false,
                     message: e.message || "Some error occurred"
@@ -32,8 +45,11 @@ export class ApiGithubUserService {
             });
     }
 
-    async getUser(githubUserId, withRepo: number) {
-        let userInfo = withRepo == 1 ? {description: '',githubUserInfo: {},repositories: []} : {description: '',githubUserInfo: {}};
+    async getUser(githubUserId: string, withRepo: number, apikey: string) {
+        let userInfo = withRepo == 1 ? {description: '', githubUserInfo: {}, repositories: []} : {
+            description: '',
+            githubUserInfo: {}
+        };
         return this.GithubService.getUser(githubUserId)
             .then(user => {
                 if (!user) throw new Error("User not found on Github");
@@ -47,6 +63,7 @@ export class ApiGithubUserService {
                 if (repositories != null) return (userInfo.repositories = repositories)
                 return;
             })
+            .then(() => this.authGuard.checkApikey(apikey))
             .then(() => this.GithubUserService.findOne(githubUserId))
             .then(userDocument => {
                 if (!userDocument) throw new Error("User not found in database");
@@ -59,6 +76,9 @@ export class ApiGithubUserService {
                 return userInfo;
             })
             .catch(e => {
+                if (e.message === this.authGuard.getErrorCode()) {
+                    return userInfo; //returning only data obtained from github, coz its in free access anyways. Preventing from obtain description field
+                }
                 return {
                     success: false,
                     message: e.hasOwnProperty("error") && e.error.hasOwnProperty("message") ? e.error.message : (e.message || "Some error occurred")
@@ -66,8 +86,9 @@ export class ApiGithubUserService {
             });
     }
 
-    async updateUser(githubUserId, description) {
-        return this.GithubUserService.findOne(githubUserId)
+    async updateUser(githubUserId, description, apikey: string) {
+        return this.authGuard.checkApikey(apikey)
+            .then(() => this.GithubUserService.findOne(githubUserId))
             .then(user => {
                 if (!user) throw new Error("User not found");
                 user.description = description;
@@ -79,6 +100,11 @@ export class ApiGithubUserService {
                 }
             })
             .catch(e => {
+                if (e.message === this.authGuard.getErrorCode()) {
+                    return {
+                        success: true
+                    }
+                }
                 return {
                     success: false,
                     message: e.message || "Some error occurred"
@@ -86,8 +112,9 @@ export class ApiGithubUserService {
             });
     }
 
-    async deleteUser(githubUserId) {
-        return this.GithubUserService.findOne(githubUserId)
+    async deleteUser(githubUserId, apikey: string) {
+        return this.authGuard.checkApikey(apikey)
+            .then(() => this.GithubUserService.findOne(githubUserId))
             .then(databaseUser => {
                 if (!databaseUser) throw new Error("User not exists");
                 return databaseUser.remove();
@@ -96,6 +123,11 @@ export class ApiGithubUserService {
                 return {success: true}
             })
             .catch(e => {
+                if (e.message === this.authGuard.getErrorCode()) {
+                    return {
+                        success: true
+                    }
+                }
                 return {
                     success: false,
                     message: e.message || "Some error occurred"

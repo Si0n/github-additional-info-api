@@ -21,15 +21,15 @@ export class GithubService {
         return request(options);
     }
 
-    public getPath(path) {
+    public getPath(path: string) {
         return `${this.endpoint}/${path}`;
     }
 
-    public async getUser(userId) {
+    public async getUser(userId: string) {
         return this.getRequest(this.getPath(`users/${userId}`), {method: "get"});
     }
 
-    public async getUserRepositories(userId) {
+    public async getUserRepositories(userId: string) {
         return this.getRequest(this.getPath(`users/${userId}/repos`), {method: "get"});
     }
 }

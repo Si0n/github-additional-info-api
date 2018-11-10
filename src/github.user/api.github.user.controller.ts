@@ -1,4 +1,4 @@
-import {Get, Post, Put, Delete, Body, Query, Param, Controller} from '@nestjs/common';
+import {Get, Post, Put, Delete, Headers, Body, Query, Param, Controller} from '@nestjs/common';
 import {ApiGithubUserService} from './api.github.user.service';
 
 @Controller("api/v1/users/")
@@ -7,22 +7,22 @@ export class ApiGithubUserController {
     }
 
     @Post(":githubUserId")
-    create(@Param("githubUserId") githubUserId: string, @Body("description") description: string) {
-        return this.service.createUser(githubUserId, description);
+    create(@Param("githubUserId") githubUserId: string, @Body("description") description: string, @Headers("authorization") apikey: string = "") {
+        return this.service.createUser(githubUserId, description, apikey);
     }
 
     @Get(":githubUserId")
-    read(@Param("githubUserId") githubUserId, @Query('repo') withRepo : number = 0) {
-        return this.service.getUser(githubUserId, withRepo);
+    read(@Param("githubUserId") githubUserId, @Query('repo') withRepo: number = 0, @Headers("authorization") apikey: string = "") {
+        return this.service.getUser(githubUserId, withRepo, apikey);
     }
 
     @Put(":githubUserId")
-    update(@Param("githubUserId") githubUserId, @Body('description') description: string) {
-        return this.service.updateUser(githubUserId, description);
+    update(@Param("githubUserId") githubUserId, @Body('description') description: string, @Headers("authorization") apikey: string = "") {
+        return this.service.updateUser(githubUserId, description, apikey);
     }
 
     @Delete(":githubUserId")
-    delete(@Param("githubUserId") githubUserId) {
-        return this.service.deleteUser(githubUserId);
+    delete(@Param("githubUserId") githubUserId, @Headers("authorization") apikey: string = "") {
+        return this.service.deleteUser(githubUserId, apikey);
     }
 }
