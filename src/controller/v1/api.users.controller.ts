@@ -6,22 +6,22 @@ export class ApiUsersController {
     constructor(private readonly service: ApiUsersService) {}
 
     @Post(":githubUserId")
-    create(@Param("githubUserId") githubUserId): string {
+    create(@Param("githubUserId") githubUserId) {
         return this.service.createUser(githubUserId);
     }
 
     @Get(":githubUserId")
-    read(@Param("githubUserId") githubUserId): string {
+    read(@Param("githubUserId") githubUserId) {
         return this.service.getUser(githubUserId);
     }
 
     @Put(":githubUserId")
-    update(@Param("githubUserId") githubUserId): string {
+    update(@Param("githubUserId") githubUserId) {
         return this.service.updateUser(githubUserId);
     }
 
     @Delete(":githubUserId")
-    delete(@Param("githubUserId") githubUserId): string {
+    delete(@Param("githubUserId") githubUserId) {
         return this.service.deleteUser(githubUserId);
     }
 }
