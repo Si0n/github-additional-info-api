@@ -1,7 +1,7 @@
 import {Get, Post, Put, Delete, Headers, Body, Query, Param, Controller} from '@nestjs/common';
 import {ApiGithubUserService} from './api.github.user.service';
 
-@Controller("api/v1/users/")
+@Controller("api/users/")
 export class ApiGithubUserController {
     constructor(private readonly service: ApiGithubUserService) {
     }
