@@ -19,119 +19,82 @@ export class ApiGithubUserService {
 
     async createUser(githubUserId: string, description: string, apikey: string) {
         let newUser: GithubUserInterface = {githubId: githubUserId, description: description};
-        return this.authGuard.checkApikey(apikey)
-            .then(() => this.GithubUserService.findOne(githubUserId))
-            .then(exist => {
-                if (exist) throw new Error("User already created!");
-            })
-            .then(() => this.GithubService.getUser(githubUserId))
-            .then(() => newUser)
-            .then(newUser => this.GithubUserService.create(newUser))
-            .then(() => {
+        try {
+            if (await this.GithubUserService.findOne(githubUserId)) throw new Error("User already created!");
+            if (await this.GithubService.getUser(githubUserId)) {
+                if (await this.authGuard.checkApikey(apikey)) {
+                    await this.GithubUserService.create(newUser);
+                }
                 return {
                     success: true
                 }
-            })
-            .catch(e => {
-                if (e.message === this.authGuard.getErrorCode()) {
-                    return {
-                        success: true
-                    }
-                }
-                return {
-                    success: false,
-                    message: e.message || "Some error occurred"
-                }
-            });
+            } else throw new Error("Github user not found!");
+        } catch (e) {
+            return {
+                success: false,
+                message: e.message || "Some error occurred"
+            }
+        }
     }
 
     async getUser(githubUserId: string, withRepo: number, apikey: string) {
-        let userInfo = withRepo == 1 ? {description: '', githubUserInfo: {}, repositories: []} : {
-            description: '',
-            githubUserInfo: {}
-        };
-        return this.GithubService.getUser(githubUserId)
-            .then(user => {
-                if (!user) throw new Error("User not found on Github");
-                return (userInfo.githubUserInfo = user);
-            })
-            .then(() => {
-                if (withRepo == 1) return this.GithubService.getUserRepositories(githubUserId)
-                return null;
-            })
-            .then(repositories => {
-                if (repositories != null) return (userInfo.repositories = repositories)
-                return;
-            })
-            .then(() => this.authGuard.checkApikey(apikey))
-            .then(() => this.GithubUserService.findOne(githubUserId))
-            .then(userDocument => {
-                if (!userDocument) throw new Error("User not found in database");
-                return userDocument.toObject();
-            })
-            .then(databaseUser => {
-                return (userInfo.description = databaseUser.description);
-            })
-            .then(() => {
-                return userInfo;
-            })
-            .catch(e => {
-                if (e.message === this.authGuard.getErrorCode()) {
-                    return userInfo; //returning only data obtained from github, coz its in free access anyways. Preventing from obtain description field
+        try {
+            let githubUser, description, githubUserRepositories;
+
+            githubUser = await this.GithubService.getUser(githubUserId);
+            if (!githubUser) throw new Error("Github user not found!");
+
+            if (withRepo == 1) {
+                githubUserRepositories = await this.GithubService.getUserRepositories(githubUserId);
+            }
+
+            if (await this.authGuard.checkApikey(apikey)) {
+                let userDocument = await this.GithubUserService.findOne(githubUserId);
+                if (userDocument) userDocument = userDocument.toObject();
+                if (userDocument && userDocument.hasOwnProperty("description")) {
+                    description = userDocument.description;
                 }
-                return {
-                    success: false,
-                    message: e.hasOwnProperty("error") && e.error.hasOwnProperty("message") ? e.error.message : (e.message || "Some error occurred")
-                }
-            });
+            }
+            if (!description)  description = "";
+            return {description: description, ...githubUser, repositories: githubUserRepositories};
+        } catch (e) {
+            return {
+                success: false,
+                message: e.hasOwnProperty("error") && e.error.hasOwnProperty("message") ? e.error.message : (e.message || "Some error occurred")
+            }
+        }
     }
 
     async updateUser(githubUserId, description, apikey: string) {
-        return this.authGuard.checkApikey(apikey)
-            .then(() => this.GithubUserService.findOne(githubUserId))
-            .then(user => {
-                if (!user) throw new Error("User not found");
-                user.description = description;
-                return user.save();
-            })
-            .then(() => {
-                return {
-                    success: true
-                }
-            })
-            .catch(e => {
-                if (e.message === this.authGuard.getErrorCode()) {
-                    return {
-                        success: true
-                    }
-                }
-                return {
-                    success: false,
-                    message: e.message || "Some error occurred"
-                }
-            });
+        try {
+            if (await this.authGuard.checkApikey(apikey)) {
+                let userDocument = await this.GithubUserService.findOne(githubUserId);
+                if (!userDocument) throw new Error("User not found");
+                userDocument.description = description;
+                await userDocument.save()
+            }
+            return {success: true};
+        } catch (e) {
+            return {
+                success: false,
+                message: e.message || "Some error occurred"
+            }
+        }
     }
 
     async deleteUser(githubUserId, apikey: string) {
-        return this.authGuard.checkApikey(apikey)
-            .then(() => this.GithubUserService.findOne(githubUserId))
-            .then(databaseUser => {
-                if (!databaseUser) throw new Error("User not exists");
-                return databaseUser.remove();
-            })
-            .then(() => {
-                return {success: true}
-            })
-            .catch(e => {
-                if (e.message === this.authGuard.getErrorCode()) {
-                    return {
-                        success: true
-                    }
-                }
-                return {
-                    success: false,
-                    message: e.message || "Some error occurred"
-                }
-            });
+        try {
+            if (await this.authGuard.checkApikey(apikey)) {
+                let userDocument = await this.GithubUserService.findOne(githubUserId);
+                if (!userDocument) throw new Error("User not found");
+                await userDocument.remove()
+            }
+            return {success: true};
+        } catch (e) {
+            return {
+                success: false,
+                message: e.message || "Some error occurred"
+            }
+        }
     }
 }

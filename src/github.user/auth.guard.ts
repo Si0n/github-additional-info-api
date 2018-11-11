@@ -10,11 +10,7 @@ export class AuthGuard {
 
     public checkApikey(apikey: string) {
         return this.prepareApikeyString(apikey)
-            .then(apikey => this.isValid(apikey))
-            .then(isAllowed => {
-                if (!isAllowed) throw new Error(this.getErrorCode());
-                return true;
-            });
+            .then(apikey => this.isValid(apikey));
     }
 
     private async prepareApikeyString(apikey: string) {
